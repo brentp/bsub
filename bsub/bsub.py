@@ -61,7 +61,6 @@ class bsub(object):
             time.sleep(sleep_time)
             if sleep_time < 100:
                 sleep_time += 0.25
-            print >>sys.stderr, sleep_time
         return True
 
     def _set_job_name(self, job_name):
