@@ -53,7 +53,7 @@ class bsub(object):
         if isinstance(job_ids, basestring):
             job_ids = [job_ids]
 
-        if len(job_ids) == []: 
+        if len(job_ids) == []:
             return
         job_ids = frozenset(job_ids)
         sleep_time = 1
@@ -89,8 +89,7 @@ class bsub(object):
             # quote if needed.
             if v and (v[0] not in "'\"") and any(tok in v for tok in "[="):
                 v = "\"%s\"" % v
-            dash = " " + ("-" if len(k) == 1 else "--")
-            s += dash + k + ("" if v is None else (" " + str(v)))
+            s += "-" + k + ("" if v is None else (" " + str(v)))
         return s
 
     def __call__(self, input_string=None):
