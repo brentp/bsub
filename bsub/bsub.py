@@ -89,7 +89,7 @@ class bsub(object):
             # quote if needed.
             if v and (v[0] not in "'\"") and any(tok in v for tok in "[="):
                 v = "\"%s\"" % v
-            s += "-" + k + ("" if v is None else (" " + str(v)))
+            s += " -" + k + ("" if v is None else (" " + str(v)))
         return s
 
     def __call__(self, input_string=None):
