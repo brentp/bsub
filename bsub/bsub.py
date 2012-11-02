@@ -64,7 +64,7 @@ class bsub(object):
         return True
 
     @classmethod
-    def cap(self, max_jobs):
+    def _cap(self, max_jobs):
         sleep_time = 1
         while len(self.running_jobs) >= max_jobs:
             time.sleep(sleep_time)
@@ -101,9 +101,11 @@ class bsub(object):
             s += " -" + k + ("" if v is None else (" " + str(v)))
         return s
 
-    def __call__(self, input_string=None):
+    def __call__(self, input_string=None, job_cap=None):
         # TODO: submit the job and return the job id.
         # and write entire command to kwargs["e"][:-4] + ".sh"
+        if job_cap is not None:
+            self._cap(job_cap)
         if input_string is None:
             assert len(self.args) == 1
             command = str(self)
