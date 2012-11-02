@@ -66,7 +66,7 @@ class bsub(object):
     @classmethod
     def _cap(self, max_jobs):
         sleep_time = 1
-        while len(self.running_jobs) >= max_jobs:
+        while len(self.running_jobs()) >= max_jobs:
             time.sleep(sleep_time)
             if sleep_time < 100:
                 sleep_time += 0.25
