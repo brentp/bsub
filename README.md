@@ -9,6 +9,9 @@ Authors
 
 ```python
 
+Example
+-------
+
 >>> sub = bsub("some_job", R="rusage[mem=1]", verbose=True)
 
 # submit a job via call'ing the sub object with the command to run.
@@ -30,6 +33,8 @@ True
 or use the command-line to poll for running jobs:
 
 
+```Shell
 python -m bsub 12345 12346 12347
+```
 
 will block until those 3 jobs finish.
