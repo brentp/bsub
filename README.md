@@ -7,10 +7,11 @@ Authors
 ------
 @brentp, @brwnj
 
-```python
 
 Example
 -------
+
+```python
 
 >>> sub = bsub("some_job", R="rusage[mem=1]", verbose=True)
 
