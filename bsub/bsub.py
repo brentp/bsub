@@ -7,7 +7,8 @@
 
 # submit a job via call'ing the sub object with the command to run.
 # the return value is the numeric job id.
->>> print sub("date").isdigit()
+>>> djob = sub("date")
+>>> djob.isdigit()
 True
 
 # 2nd argument can be a shell script, in which case
@@ -15,9 +16,16 @@ True
 #>>> bsub("somejob", "run.sh", verbose=True)()
 
 # dependencies:
->>> job_id = bsub("sleeper", verbose=True)("sleep 2")
+>>> job_id = bsub("sleeper", verbose=True, n=2)("sleep 2")
 >>> bsub.poll(job_id)
 True
+
+>>> import os
+
+>>> os.unlink('sleeper.%s.err' % job_id)
+>>> os.unlink('sleeper.%s.out' % job_id)
+>>> os.unlink('some_job.%s.err' % djob)
+>>> os.unlink('some_job.%s.out' % djob)
 
 """
 import subprocess as sp
@@ -96,7 +104,9 @@ class bsub(object):
         s = "%s" % self.__class__.__name__
         for k, v in kwargs.items():
             # quote if needed.
-            if v and (v[0] not in "'\"") and any(tok in v for tok in "[="):
+            if isinstance(v, (float, int)):
+                pass
+            elif v and (v[0] not in "'\"") and any(tok in v for tok in "[="):
                 v = "\"%s\"" % v
             s += " -" + k + ("" if v is None else (" " + str(v)))
         return s
