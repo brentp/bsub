@@ -8,7 +8,7 @@
 # submit a job via call'ing the sub object with the command to run.
 # the return value is the numeric job id.
 >>> djob = sub("date")
->>> djob.isdigit()
+>>> djob.job_id.isdigit() and djob.job_id != '0'
 True
 
 # 2nd argument can be a shell script, in which case
@@ -16,16 +16,25 @@ True
 #>>> bsub("somejob", "run.sh", verbose=True)()
 
 # dependencies:
->>> job_id = bsub("sleeper", verbose=True, n=2)("sleep 2")
+>>> job_id = bsub("sleeper", verbose=True, n=2)("sleep 2").job_id
 >>> bsub.poll(job_id)
 True
 
->>> import os
+# run one job, `then` another when it finishes
+>>> res = bsub("sleep1", verbose=True)("sleep 2").then("sleep 1", job_name="sleep2")
+>>> bsub.poll(res.job_id)
+True
 
+
+# cleanup
+>>> import os, glob
 >>> os.unlink('sleeper.%s.err' % job_id)
 >>> os.unlink('sleeper.%s.out' % job_id)
->>> os.unlink('some_job.%s.err' % djob)
->>> os.unlink('some_job.%s.out' % djob)
+>>> os.unlink('some_job.%s.err' % djob.job_id)
+>>> os.unlink('some_job.%s.out' % djob.job_id)
+>>> for f in glob.glob('sleep1.*.err') + glob.glob('sleep2.*.err') + \
+         glob.glob('sleep1.*.out') + glob.glob('sleep2.*.out'):
+...     os.unlink(f)
 
 """
 import subprocess as sp
@@ -43,6 +52,13 @@ class bsub(object):
         self.job_name = job_name
         self.args = args
         assert len(args) in (0, 1)
+        self.job_id = None
+
+    def __int__(self):
+        return int(self.job_id)
+
+    def __long__(self):
+        return long(self.job_id)
 
     @property
     def command(self):
@@ -111,6 +127,7 @@ class bsub(object):
             s += " -" + k + ("" if v is None else (" " + str(v)))
         return s
 
+
     def __call__(self, input_string=None, job_cap=None):
         # TODO: submit the job and return the job id.
         # and write entire command to kwargs["e"][:-4] + ".sh"
@@ -131,7 +148,25 @@ class bsub(object):
         if not ("is submitted" in res and p.returncode == 0):
             raise BSubException(res)
         job = res.split("<", 1)[1].split(">", 1)[0]
-        return job
+        self.job_id = job
+        return self
+
+    def then(self, input_string=None, job_name=None):
+        """
+        >>
+        """
+        # NOTE: could use name*, but here force relying on single job
+        self.kwargs['w'] = '"done(%i)"' % int(self)
+        # cant get exit 0 to work on our cluster.
+        #self.kwargs['w'] = '"exit(%i, 0)"' % int(self)
+        if not job_name is None:
+            self.job_name = job_name
+        # wait for success (exit code 0) of current job
+        try:
+            res = self(input_string)
+        finally:
+            self.kwargs.pop('w')
+            return res
 
     def __str__(self):
         return self.command
