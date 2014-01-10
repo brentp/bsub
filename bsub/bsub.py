@@ -21,7 +21,7 @@ True
 True
 
 # run one job, `then` another when it finishes
->>> res = bsub("sleep1", verbose=True)("sleep 2").then("sleep 1", job_name="sleep2")
+>>> res = bsub("sleepA", verbose=True)("sleep 2").then("sleep 1", job_name="sleepB")
 >>> bsub.poll(res.job_id)
 True
 
@@ -151,21 +151,20 @@ class bsub(object):
         self.job_id = job
         return self
 
-    def then(self, input_string=None, job_name=None):
+    def then(self, input_string, job_name=None):
         """
         >>
         """
+        bs = bsub(job_name or self.job_name, *self.args, **self.kwargs)
+        bs.verbose = self.verbose
         # NOTE: could use name*, but here force relying on single job
-        self.kwargs['w'] = '"done(%i)"' % int(self)
         # cant get exit 0 to work on our cluster.
-        #self.kwargs['w'] = '"exit(%i, 0)"' % int(self)
-        if not job_name is None:
-            self.job_name = job_name
-        # wait for success (exit code 0) of current job
+        bs.kwargs['w'] = '"done(%i)"' % int(self)
+
         try:
-            res = self(input_string)
+            res = bs(input_string)
         finally:
-            self.kwargs.pop('w')
+            res.kwargs.pop('w')
             return res
 
     def __str__(self):
