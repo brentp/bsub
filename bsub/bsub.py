@@ -1,6 +1,6 @@
 """
  create a job with a job name and any extra args to send to lsf
- in the case below. 
+ in the case below.
     -J some_job -e some_job.%J.err -o some_job.%J.out
  will be automatically added to the command.
 >>> sub = bsub("some_job", R="rusage[mem=1]", verbose=True)
@@ -25,6 +25,11 @@ True
 >>> bsub.poll(res.job_id)
 True
 
+# again: run one job, `then` another when it finishes with different
+# LSF options
+>>> res = bsub("sleepA", verbose=True)("sleep 2").then("sleep 1", job_name="sleepB", R="rusage[mem=1]")
+>>> bsub.poll(res.job_id)
+True
 
 # cleanup
 >>> import os, glob
@@ -151,10 +156,13 @@ class bsub(object):
         self.job_id = job
         return self
 
-    def then(self, input_string, job_name=None):
+    def then(self, input_string, job_name=None, **kwargs):
         """
         >>
         """
+        # ability to set/reset kwargs
+        self.kwargs.update(kwargs)
+
         bs = bsub(job_name or self.job_name, *self.args, **self.kwargs)
         bs.verbose = self.verbose
         # NOTE: could use name*, but here force relying on single job
