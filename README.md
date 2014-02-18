@@ -83,8 +83,8 @@ chrom_sizes = "chrom_sizes.txt"
 #  submit jobs by strand for parallel processing
 for symbol, strand in izip(["+", "-"], ["pos", "neg"]):
 
-    bigwig = sample + "_" + strand + ".bw"
-    bedgraph = sample + "_" + strand + ".bedgraph"
+    bigwig = "%s_%s.bw" % (sample, strand)
+    bedgraph = "%s_%s.bedgraph" % (sample, strand)
 
     bam_to_bg = ("bedtools genomecov -strand %s -bg "
                     "-ibam %s | bedtools sort -i - > %s") % (symbol, bam, bedgraph)
