@@ -65,6 +65,7 @@ j('sleep 1').then('echo "hello"').then('echo "world"')
 Where each job in `.then()` is not run until the preceding job
 is `done()` according to LSF.
 
+
 Bioinformatics example of chaining:
 
 This would submit jobs for positive and negative strand coverage in parallel.
@@ -81,7 +82,7 @@ sample = "subject_1"
 chrom_sizes = "chrom_sizes.txt"
 
 #  submit jobs by strand for parallel processing
-for symbol, strand in izip(["+", "-"], ["pos", "neg"]):
+for symbol, strand in zip(["+", "-"], ["pos", "neg"]):
 
     bigwig = "%s_%s.bw" % (sample, strand)
     bedgraph = "%s_%s.bedgraph" % (sample, strand)
