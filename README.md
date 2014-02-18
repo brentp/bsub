@@ -67,6 +67,9 @@ is `done()` according to LSF.
 
 Bioinformatics example of chaining:
 
+This would submit jobs for positive and negative strand coverage in parallel.
+Each strand submitting jobs that run serially.
+
 ```Python
 
 from bsub import bsub
@@ -76,16 +79,19 @@ submit = bsub("bam2bg", verbose=verbose)
 # convert bam to stranded bg then bw
 sample = "subject_1"
 chrom_sizes = "chrom_sizes.txt"
+
+#  submit jobs by strand for parallel processing
 for symbol, strand in izip(["+", "-"], ["pos", "neg"]):
 
     bigwig = sample + "_" + strand + ".bw"
     bedgraph = sample + "_" + strand + ".bedgraph"
 
-    bam_to_bg = ("genomeCoverageBed -strand %s -bg "
-                    "-ibam %s | sortBed -i - > %s") % (symbol, bam, bedgraph)
+    bam_to_bg = ("bedtools genomecov -strand %s -bg "
+                    "-ibam %s | bedtools sort -i - > %s") % (symbol, bam, bedgraph)
     bg_to_bw = "bedGraphToBigWig %s %s %s" % (bedgraph, chrom_sizes, bigwig)
     gzip_bg = "gzip -f %s" % bedgraph
 
+    # process strand-based steps serially
     # submit first 2 jobs to default queue; final job to 'gzip' queue
     submit(bam_to_bg).then(bg_to_bw, job_name="bg2bw").then(gzip_bg, "gzipbg", q='gzip')
 
