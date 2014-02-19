@@ -7,7 +7,7 @@ from bsub import bsub
 
 def main(args):
     bsub.poll(args.jobids)
-    
+
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser(description=__doc__,

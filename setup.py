@@ -10,6 +10,7 @@ setup(
     keywords = "cluster lsf bsub",
     url = "https://github.com/brentp/bsub",
     packages=['bsub'],
+    requires=['six'],
     long_description=open('README.md').read(),
     classifiers=[
         "Development Status :: 3 - Alpha",

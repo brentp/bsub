@@ -79,7 +79,8 @@ class bsub(object):
 
     @classmethod
     def poll(self, job_ids):
-        if isinstance(job_ids, basestring):
+        import six
+        if isinstance(job_ids, six.string_types):
             job_ids = [job_ids]
 
         if len(job_ids) == []:
@@ -144,7 +145,7 @@ class bsub(object):
         else:
             command = "echo \"%s\" | %s" % (input_string, str(self))
         if self.verbose:
-            print >>sys.stderr, command
+            sys.stderr.write(command + '\n')
         p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
         p.wait()
         if p.returncode != 0:
