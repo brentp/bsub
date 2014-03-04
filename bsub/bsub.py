@@ -56,6 +56,9 @@ import time
 class BSubException(Exception):
     pass
 
+class BSubJobNotFound(BSubException):
+    pass
+
 class bsub(object):
     def __init__(self, job_name, *args, **kwargs):
         self.verbose = kwargs.pop('verbose', False)
@@ -216,9 +219,11 @@ class bsub(object):
 def _run(command, check_str="is submitted"):
     p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
     p.wait()
-    if p.returncode != 0:
+    if p.returncode == 255:
+        raise BSubJobNotFound(command)
+    elif p.returncode != 0:
         raise BSubException(command + "[" + str(p.returncode) + "]")
-    res = p.stdout.read()
+    res = p.stdout.read().strip()
     if not (check_str in res and p.returncode == 0):
         raise BSubException(res)
     # could return job-id from here
