@@ -134,8 +134,7 @@ class bsub(object):
 
 
     def __call__(self, input_string=None, job_cap=None):
-        # TODO: submit the job and return the job id.
-        # and write entire command to kwargs["e"][:-4] + ".sh"
+        # TODO: write entire command to kwargs["e"][:-4] + ".sh"
         if job_cap is not None:
             self._cap(job_cap)
         if input_string is None:
@@ -172,8 +171,12 @@ class bsub(object):
         try:
             res = bs(input_string)
         finally:
-            res.kwargs.pop('w')
-            return res
+            try:
+                res.kwargs.pop('w')
+                return res
+            except UnboundLocalError:
+                sys.stderr.write('ERROR: %s\n' % input_string)
+                return None
 
     def __str__(self):
         return self.command
