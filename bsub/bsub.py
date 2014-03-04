@@ -31,10 +31,16 @@ True
 >>> bsub.poll(res.job_id)
 True
 
+>>> bsub("sleep-kill")("sleep 100000")
+bsub('sleep-kill')
+>>> bsub.bkill('sleep-kill')
+
 # cleanup
 >>> import os, glob
 >>> os.unlink('sleeper.%s.err' % job_id)
 >>> os.unlink('sleeper.%s.out' % job_id)
+>>> os.unlink('sleepB.%s.out' % res.job_id)
+>>> os.unlink('sleepB.%s.err' % res.job_id)
 >>> os.unlink('some_job.%s.err' % djob.job_id)
 >>> os.unlink('some_job.%s.out' % djob.job_id)
 >>> for f in glob.glob('sleep1.*.err') + glob.glob('sleep2.*.err') + \
@@ -67,15 +73,24 @@ class bsub(object):
 
     @property
     def command(self):
-        return self._kwargs_to_flag_string() \
+        s = self.__class__.__name__
+
+        return s + " " + self._kwargs_to_flag_string(self.kwargs) \
             + ((" < %s" % self.args[0]) if len(self.args) else "")
 
     def _get_job_name(self):
         return self._job_name
 
     @classmethod
-    def running_jobs(self):
-        return [x.split()[0] for x in sp.check_output(["bjobs"]).rstrip().split("\n")[1:]]
+    def running_jobs(self, names=False):
+        # grab the integer id or the name depending on whether they requested
+        # names=True
+        return [x.split(None, 7)[-2 if names else 0]
+                for x in sp.check_output(["bjobs", "-w"])\
+                           .rstrip().split("\n")[1:]
+                           if x.strip()
+               ]
+
 
     @classmethod
     def poll(self, job_ids):
@@ -120,9 +135,9 @@ class bsub(object):
 
     job_name = property(_get_job_name, _set_job_name)
 
-    def _kwargs_to_flag_string(self):
-        kwargs = self.kwargs
-        s = "%s" % self.__class__.__name__
+    @classmethod
+    def _kwargs_to_flag_string(cls, kwargs):
+        s = ""
         for k, v in kwargs.items():
             # quote if needed.
             if isinstance(v, (float, int)):
@@ -144,13 +159,7 @@ class bsub(object):
             command = "echo \"%s\" | %s" % (input_string, str(self))
         if self.verbose:
             print >>sys.stderr, command
-        p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
-        p.wait()
-        if p.returncode != 0:
-            raise BSubException(command + " | " + str(p.returncode))
-        res = p.stdout.read()
-        if not ("is submitted" in res and p.returncode == 0):
-            raise BSubException(res)
+        res = _run(command)
         job = res.split("<", 1)[1].split(">", 1)[0]
         self.job_id = job
         return self
@@ -180,7 +189,42 @@ class bsub(object):
 
     def __str__(self):
         return self.command
+    def __repr__(self):
+        return "bsub('%s')" % self.job_name
+
+    def kill(self):
+        """
+        Kill this job. To kill any job, see the bsub.bkill classmethod
+        """
+        if self.job_id is None: return
+        return bsub.kill(int(self.job_id))
+
+    @classmethod
+    def bkill(cls, *args, **kwargs):
+        """
+        args is a list of integer job ids or string names
+        """
+        kargs = cls._kwargs_to_flag_string(kwargs)
+        if all(isinstance(a, (int, long)) for a in args):
+            command = "bkill " + kargs + " " + " ".join(args)
+            _run(command, "is being terminated")
+        else:
+            for a in args:
+                command = "bkill " + kargs.strip() + " -J " + a
+                _run(command, "is being terminated")
+
+def _run(command, check_str="is submitted"):
+    p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+    p.wait()
+    if p.returncode != 0:
+        raise BSubException(command + "[" + str(p.returncode) + "]")
+    res = p.stdout.read()
+    if not (check_str in res and p.returncode == 0):
+        raise BSubException(res)
+    # could return job-id from here
+    return res
+
 
 if __name__ == "__main__":
     import doctest
-    doctest.testmod()
+    doctest.testmod(optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
