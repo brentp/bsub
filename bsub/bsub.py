@@ -49,6 +49,7 @@ import subprocess as sp
 import sys
 import os
 import time
+import six
 
 class BSubException(Exception):
     pass
@@ -94,7 +95,6 @@ class bsub(object):
 
     @classmethod
     def poll(self, job_ids):
-        import six
         if isinstance(job_ids, six.string_types):
             job_ids = [job_ids]
 
@@ -205,7 +205,6 @@ class bsub(object):
         """
         args is a list of integer job ids or string names
         """
-        import six
         kargs = cls._kwargs_to_flag_string(kwargs)
         if all(isinstance(a, six.integer_types) for a in args):
             command = "bkill " + kargs + " " + " ".join(args)
@@ -214,6 +213,65 @@ class bsub(object):
             for a in args:
                 command = "bkill " + kargs.strip() + " -J " + a
                 _run(command, "is being terminated")
+
+    @classmethod
+    def template(cls, commands, inputs, name_getter=os.path.basename,
+            date_fmt="%d-%m-%Y", info_dict={}, **bsub_kwargs):
+        """
+        for date_fmt, see:
+            http://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
+        bsub_kwargs are passed to bsub.__init__
+        info_dict: contains any extra variables to be used in the templates.
+                   e.g. {'results': 'some/other/path/'}
+        see: https://github.com/brentp/bsub/issues/5 for impetus
+        """
+        if isinstance(commands, six.string_types):
+            commands = [commands]
+        if isinstance(name_getter, six.string_types):
+            import re
+            import datetime
+            now = datetime.datetime.now()
+            reg = re.compile(name_getter)
+
+            def name_getter(afile):
+                match = reg.search(afile)
+
+                info = match.groupdict() if match.groupdict() \
+                                         else dict(name=match.group(0)[0])
+                if not 'name' in info: info['name'] = os.path.basename(file)
+                return info
+
+        else:
+            _name_getter = name_getter
+            def name_getter(afile):
+                return dict(name=_name_getter(afile))
+
+        def job_info(afile):
+            info = name_getter(afile)
+            info.update(dict(wd=os.getcwd(), dirname=os.path.dirname(afile),
+                            basename=os.path.basename(afile), input=afile,
+                            date=now.strftime(date_fmt)))
+            info.update(info_dict)
+            return info
+
+        if isinstance(inputs, six.string_types):
+            import glob
+            inputs = glob.glob(inputs)
+        job_ids = []
+        for afile in inputs:
+            info = job_info(afile)
+            job = None
+            for i, command in enumerate(commands):
+                cmd = command.format(**info)
+                if i == 0:
+                    job = bsub(info['name'], **bsub_kwargs)
+                    job_ids.append(job(cmd).job_id)
+                else:
+                    # TODO: adjust name?
+                    job = job.then(cmd)
+                    job_ids.append(job.job_id)
+        return job_ids
+
 
 def _run(command, check_str="is submitted"):
     p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
