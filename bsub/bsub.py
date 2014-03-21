@@ -51,6 +51,8 @@ import os
 import time
 import six
 
+TEST_ONLY = 666
+
 class BSubException(Exception):
     pass
 
@@ -160,6 +162,8 @@ class bsub(object):
             command = "echo \"%s\" | %s" % (input_string, str(self))
         if self.verbose:
             sys.stderr.write(command + '\n')
+        if self.verbose == TEST_ONLY:
+            return self
         res = _run(command)
         job = res.split("<", 1)[1].split(">", 1)[0]
         self.job_id = job
