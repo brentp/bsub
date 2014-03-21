@@ -232,10 +232,10 @@ class bsub(object):
         """
         if isinstance(commands, six.string_types):
             commands = [commands]
+        import datetime
+        now = datetime.datetime.now()
         if isinstance(name_getter, six.string_types):
             import re
-            import datetime
-            now = datetime.datetime.now()
             reg = re.compile(name_getter)
 
             def name_getter(afile):
@@ -249,7 +249,8 @@ class bsub(object):
         else:
             _name_getter = name_getter
             def name_getter(afile):
-                return dict(name=_name_getter(afile))
+                r = _name_getter(afile)
+                return r if isinstance(r, dict) else dict(name=r)
 
         def job_info(afile):
             info = name_getter(afile)
