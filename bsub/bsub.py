@@ -16,29 +16,28 @@ True
 #>>> bsub("somejob", "run.sh", verbose=True)()
 
 # dependencies:
->>> job_id = bsub("sleeper", verbose=True, n=2)("sleep 2").job_id
+>>> job_id = bsub("test.sleeper", verbose=True, n=2)("sleep 2").job_id
 >>> bsub.poll(job_id)
 True
 
+
 # run one job, `then` another when it finishes
->>> res = bsub("sleepA", verbose=True)("sleep 2").then("sleep 1", job_name="sleepB")
+>>> res = bsub("test.sleepA", verbose=True)("sleep 2").then("sleep 1",
+...            job_name="test.sleepB")
 >>> bsub.poll(res.job_id)
 True
 
 # again: run one job, `then` another when it finishes with different
 # LSF options
->>> res = bsub("sleepA", verbose=True)("sleep 2").then("sleep 1", job_name="sleepB", R="rusage[mem=1]")
+>>> res = bsub("test.sleepA", verbose=True)("sleep 2").then("sleep 1", job_name="test.sleepB", R="rusage[mem=1]")
 >>> bsub.poll(res.job_id)
 True
 
 # cleanup
->>> import os, glob
->>> os.unlink('sleeper.%s.err' % job_id)
->>> os.unlink('sleeper.%s.out' % job_id)
->>> os.unlink('some_job.%s.err' % djob.job_id)
->>> os.unlink('some_job.%s.out' % djob.job_id)
->>> for f in glob.glob('sleep1.*.err') + glob.glob('sleep2.*.err') + \
-         glob.glob('sleep1.*.out') + glob.glob('sleep2.*.out'):
+>>> import os, glob, time
+>>> time.sleep(1)
+>>> for f in glob.glob('test.sleep*.err') + glob.glob('test.sleep*.out') + \
+         glob.glob('some_job.*.out') + glob.glob('some_job.*.err'):
 ...     os.unlink(f)
 
 """
@@ -75,7 +74,7 @@ class bsub(object):
 
     @classmethod
     def running_jobs(self):
-        return [x.split()[0] for x in sp.check_output(["bjobs"]).rstrip().split("\n")[1:]]
+        return [x.split()[0].decode() for x in sp.check_output(["bjobs"]).rstrip().split(b"\n")[1:]]
 
     @classmethod
     def poll(self, job_ids):
@@ -151,10 +150,10 @@ class bsub(object):
         if p.returncode != 0:
             raise BSubException(command + " | " + str(p.returncode))
         res = p.stdout.read()
-        if not ("is submitted" in res and p.returncode == 0):
+        if not (b"is submitted" in res and p.returncode == 0):
             raise BSubException(res)
-        job = res.split("<", 1)[1].split(">", 1)[0]
-        self.job_id = job
+        job = res.split(b"<", 1)[1].split(b">", 1)[0]
+        self.job_id = job.decode()
         return self
 
     def then(self, input_string, job_name=None, **kwargs):
@@ -181,4 +180,4 @@ class bsub(object):
 
 if __name__ == "__main__":
     import doctest
-    doctest.testmod()
+    doctest.testmod(optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
