@@ -163,6 +163,7 @@ class bsub(object):
         if self.verbose:
             sys.stderr.write(command + '\n')
         if self.verbose == TEST_ONLY:
+            self.job_id = TEST_ONLY
             return self
         res = _run(command)
         job = res.split("<", 1)[1].split(">", 1)[0]
