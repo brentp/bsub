@@ -33,6 +33,10 @@ True
 >>> bsub.poll(res.job_id)
 True
 
+>>> bsub("test.sleep-kill")("sleep 100000")
+bsub('test.sleep-kill')
+>>> bsub.bkill('test.sleep-kill')
+
 # cleanup
 >>> import os, glob, time
 >>> time.sleep(1)
@@ -47,6 +51,9 @@ import os
 import time
 
 class BSubException(Exception):
+    pass
+
+class BSubJobNotFound(BSubException):
     pass
 
 class bsub(object):
@@ -66,15 +73,24 @@ class bsub(object):
 
     @property
     def command(self):
-        return self._kwargs_to_flag_string() \
+        s = self.__class__.__name__
+
+        return s + " " + self._kwargs_to_flag_string(self.kwargs) \
             + ((" < %s" % self.args[0]) if len(self.args) else "")
 
     def _get_job_name(self):
         return self._job_name
 
     @classmethod
-    def running_jobs(self):
-        return [x.split()[0].decode() for x in sp.check_output(["bjobs"]).rstrip().split(b"\n")[1:]]
+
+    def running_jobs(self, names=False):
+        # grab the integer id or the name depending on whether they requested
+        # names=True
+        return [x.split(None, 7)[-2 if names else 0]
+                for x in sp.check_output(["bjobs", "-w"])\
+                           .decode().rstrip().split("\n")[1:]
+                           if x.strip()
+               ]
 
     @classmethod
     def poll(self, job_ids):
@@ -120,9 +136,9 @@ class bsub(object):
 
     job_name = property(_get_job_name, _set_job_name)
 
-    def _kwargs_to_flag_string(self):
-        kwargs = self.kwargs
-        s = "%s" % self.__class__.__name__
+    @classmethod
+    def _kwargs_to_flag_string(cls, kwargs):
+        s = ""
         for k, v in kwargs.items():
             # quote if needed.
             if isinstance(v, (float, int)):
@@ -134,8 +150,7 @@ class bsub(object):
 
 
     def __call__(self, input_string=None, job_cap=None):
-        # TODO: submit the job and return the job id.
-        # and write entire command to kwargs["e"][:-4] + ".sh"
+        # TODO: write entire command to kwargs["e"][:-4] + ".sh"
         if job_cap is not None:
             self._cap(job_cap)
         if input_string is None:
@@ -145,15 +160,9 @@ class bsub(object):
             command = "echo \"%s\" | %s" % (input_string, str(self))
         if self.verbose:
             sys.stderr.write(command + '\n')
-        p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
-        p.wait()
-        if p.returncode != 0:
-            raise BSubException(command + " | " + str(p.returncode))
-        res = p.stdout.read()
-        if not (b"is submitted" in res and p.returncode == 0):
-            raise BSubException(res)
-        job = res.split(b"<", 1)[1].split(b">", 1)[0]
-        self.job_id = job.decode()
+        res = _run(command)
+        job = res.split("<", 1)[1].split(">", 1)[0]
+        self.job_id = job
         return self
 
     def then(self, input_string, job_name=None, **kwargs):
@@ -172,11 +181,53 @@ class bsub(object):
         try:
             res = bs(input_string)
         finally:
-            res.kwargs.pop('w')
-            return res
+            try:
+                res.kwargs.pop('w')
+                return res
+            except UnboundLocalError:
+                sys.stderr.write('ERROR: %s\n' % input_string)
+                return None
 
     def __str__(self):
         return self.command
+    def __repr__(self):
+        return "bsub('%s')" % self.job_name
+
+    def kill(self):
+        """
+        Kill this job. To kill any job, see the bsub.bkill classmethod
+        """
+        if self.job_id is None: return
+        return bsub.kill(int(self.job_id))
+
+    @classmethod
+    def bkill(cls, *args, **kwargs):
+        """
+        args is a list of integer job ids or string names
+        """
+        import six
+        kargs = cls._kwargs_to_flag_string(kwargs)
+        if all(isinstance(a, six.integer_types) for a in args):
+            command = "bkill " + kargs + " " + " ".join(args)
+            _run(command, "is being terminated")
+        else:
+            for a in args:
+                command = "bkill " + kargs.strip() + " -J " + a
+                _run(command, "is being terminated")
+
+def _run(command, check_str="is submitted"):
+    p = sp.Popen(command, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
+    p.wait()
+    if p.returncode == 255:
+        raise BSubJobNotFound(command)
+    elif p.returncode != 0:
+        raise BSubException(command + "[" + str(p.returncode) + "]")
+    res = p.stdout.read().strip().decode()
+    if not (check_str in res and p.returncode == 0):
+        raise BSubException(res)
+    # could return job-id from here
+    return res
+
 
 if __name__ == "__main__":
     import doctest
