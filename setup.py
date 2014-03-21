@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = "bsub",
-    version = "0.3",
+    version = "0.3.1",
     author = "Brent Pedersen, Joe Brown",
     author_email = "bpederse@gmail.com",
     description = ("submit jobs to LSF with python"),
