@@ -258,6 +258,17 @@ class bsub(object):
                             basename=os.path.basename(afile), input=afile,
                             date=now.strftime(date_fmt)))
             info.update(info_dict)
+            # make {fq1} and {r1} availabe if input is a fastq.
+            if afile.endswith(('.fastq', '.fq', '.fastq.gz', '.fq.gz')):
+                info['fq1'] = info['r1'] = afile
+            # if there is, e.g. r1='some/f_R1_001.fastq, then auto add
+            # r2 = 'some/f_R2_001.fastq
+            for r1 in set(['fq1', 'r1', 'FQ1', 'R1']).intersection(info):
+                fq1 = info[r1]
+                fq2 = info[r1].replace("_R1_", "_R2_")
+
+                if fq1 != fq2 and os.path.exists(fq2):
+                    info[r1.replace('1', '2')] = fq2
             return info
 
         if isinstance(inputs, six.string_types):
@@ -268,7 +279,11 @@ class bsub(object):
             info = job_info(afile)
             job = None
             for i, command in enumerate(commands):
-                cmd = command.format(**info)
+                try:
+                    cmd = command.format(**info)
+                except KeyError:
+                    sys.stderr.write("%r\n" % info)
+                    raise
                 if i == 0:
                     job = bsub(info['name'], **bsub_kwargs)
                     job_ids.append(job(cmd).job_id)
