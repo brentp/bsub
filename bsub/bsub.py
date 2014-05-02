@@ -20,7 +20,6 @@ True
 >>> bsub.poll(job_id)
 True
 
-
 # run one job, `then` another when it finishes
 >>> res = bsub("test.sleepA", verbose=True)("sleep 2").then("sleep 1",
 ...            job_name="test.sleepB")
@@ -29,7 +28,8 @@ True
 
 # again: run one job, `then` another when it finishes with different
 # LSF options
->>> res = bsub("test.sleepA", verbose=True)("sleep 2").then("sleep 1", job_name="test.sleepB", R="rusage[mem=1]")
+>>> res = bsub("test.sleepA", verbose=True)("sleep 2").then("sleep 1",
+...             job_name="test.sleepB", R="rusage[mem=1]")
 >>> bsub.poll(res.job_id)
 True
 
@@ -37,11 +37,18 @@ True
 bsub('test.sleep-kill')
 >>> bsub.bkill('test.sleep-kill')
 
+# wait on multiple jobs
+>>> job1 = sub("sleep 3")
+>>> job2 = sub("sleep 3")
+>>> job3 = bsub("wait_job", w='"done(%i) && done(%i)"' % (job1, job2),
+...             verbose=True)("sleep 1")
+
 # cleanup
 >>> import os, glob, time
 >>> time.sleep(1)
 >>> for f in glob.glob('test.sleep*.err') + glob.glob('test.sleep*.out') + \
-         glob.glob('some_job.*.out') + glob.glob('some_job.*.err'):
+         glob.glob('some_job.*.out') + glob.glob('some_job.*.err') + \
+         glob.glob('wait_job.*.out') + glob.glob('wait_job.*.err'):
 ...     os.unlink(f)
 
 """
@@ -150,7 +157,6 @@ class bsub(object):
             s += " -" + k + ("" if v is None else (" " + str(v)))
         return s
 
-
     def __call__(self, input_string=None, job_cap=None):
         # TODO: write entire command to kwargs["e"][:-4] + ".sh"
         if job_cap is not None:
@@ -195,6 +201,7 @@ class bsub(object):
 
     def __str__(self):
         return self.command
+
     def __repr__(self):
         return "bsub('%s')" % self.job_name
 
@@ -306,7 +313,6 @@ def _run(command, check_str="is submitted"):
         raise BSubException(res)
     # could return job-id from here
     return res
-
 
 if __name__ == "__main__":
     import doctest
