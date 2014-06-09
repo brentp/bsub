@@ -109,4 +109,8 @@ use the command-line to poll for running jobs:
 python -m bsub 12345 12346 12347
 ```
 
-will block until those 3 jobs finish.
+will block until those 3 jobs finish. Can also use the job names as:
+
+```Shell
+python -m bsub -J jobname
+```

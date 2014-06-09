@@ -103,7 +103,7 @@ class bsub(object):
                ]
 
     @classmethod
-    def poll(self, job_ids):
+    def poll(self, job_ids, names=False):
         if isinstance(job_ids, six.string_types):
             job_ids = [job_ids]
 
@@ -111,7 +111,7 @@ class bsub(object):
             return
         job_ids = frozenset(job_ids)
         sleep_time = 1
-        while job_ids.intersection(self.running_jobs()):
+        while job_ids.intersection(self.running_jobs(names=names)):
             time.sleep(sleep_time)
             if sleep_time < 100:
                 sleep_time += 0.25
