@@ -52,6 +52,7 @@ bsub('test.sleep-kill')
 ...     os.unlink(f)
 
 """
+from __future__ import print_function
 import subprocess as sp
 import sys
 import os
@@ -156,6 +157,43 @@ class bsub(object):
                 v = "\"%s\"" % v
             s += " -" + k + ("" if v is None else (" " + str(v)))
         return s
+
+    def __lt__(self, filename):
+        # send a job like:
+        """
+        >>> from bsub import bsub
+        >>> fh = open('e.sh', 'w')
+        >>> print("echo hello", file=fh)
+        >>> fh.close()
+
+        >>> j = bsub('ejob') < 'e.sh'
+
+        >>> bsub.poll(j.job_id)
+        True
+        >>> assert os.path.exists('ejob.%i.out' % j)
+        >>> os.unlink('e.sh')
+        >>> os.unlink('ejob.%i.out' % j)
+        >>> os.unlink('ejob.%i.err' % j)
+        """
+        assert os.path.isfile(filename), (filename, "is not a file")
+        args = self.args
+        self.args = (filename,)
+        try:
+            return self()
+        finally:
+            self.args = args
+
+    def __ror__(self, job_string):
+        """
+        >>> from bsub import bsub
+        >>> job = "echo hello" | bsub('gjob')
+        >>> bsub.poll(job.job_id)
+        True
+        >>> assert os.path.exists('gjob.%i.out' % job)
+        >>> os.unlink('gjob.%i.out' % job)
+        >>> os.unlink('gjob.%i.err' % job)
+        """
+        return self(job_string)
 
     def __call__(self, input_string=None, job_cap=None):
         # TODO: write entire command to kwargs["e"][:-4] + ".sh"

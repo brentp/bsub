@@ -31,6 +31,23 @@ True
 
 ```
 
+Sugar
+-----
+
+For file jobs, we can emulate shell syntax:
+
+```Python
+
+job = bsub('my-job') < 'run.sh'
+```
+
+Same for text commands:
+
+```Python
+
+"echo hello" | bsub('other-job')
+
+```
 
 Chaining
 --------
