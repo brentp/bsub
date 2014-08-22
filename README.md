@@ -119,15 +119,13 @@ for symbol, strand in zip(["+", "-"], ["pos", "neg"]):
 Command-Line
 ------------
 
-use the command-line to poll for running jobs:
+use the command-line to run jobs with auto-specified err and log files:
 
 
 ```Shell
-python -m bsub 12345 12346 12347
+echo "hello" | python -m bsub -J "fake" 
+bsub  -J fake -e fake.%J.err -o fake.%J.out < /tmp/tmp3vFDwn.sh
 ```
+If a log/ directory exists, the logs will be placed there.
 
-will block until those 3 jobs finish. Can also use the job names as:
-
-```Shell
-python -m bsub -J jobname
-```
+the shell script is automatically created and cleaned up after use.

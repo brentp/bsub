@@ -93,7 +93,6 @@ class bsub(object):
         return self._job_name
 
     @classmethod
-
     def running_jobs(self, names=False):
         # grab the integer id or the name depending on whether they requested
         # names=True
