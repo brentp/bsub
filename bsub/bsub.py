@@ -62,9 +62,9 @@ import six
 TEST_ONLY = 666
 
 try:
-    from shlex import quote
-except:
-    from pipes import quote
+    from shlex import quote #py3
+except ImportError:
+    from pipes import quote #py2
 
 class BSubException(Exception):
     pass
