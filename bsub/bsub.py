@@ -61,6 +61,11 @@ import six
 
 TEST_ONLY = 666
 
+try:
+    from shlex import quote
+except:
+    from pipes import quote
+
 class BSubException(Exception):
     pass
 
@@ -129,7 +134,7 @@ class bsub(object):
     def _set_job_name(self, job_name):
         has_log_dir = os.access('logs/', os.W_OK)
         kwargs = self.kwargs
-        kwargs["J"] = job_name
+        kwargs["J"] = quote(job_name)
         kwargs["e"] = kwargs["J"] + ".%J"
         kwargs["o"] = kwargs["J"] + ".%J"
         if "[" in job_name:
@@ -141,7 +146,7 @@ class bsub(object):
             for i in "oe":
                 kwargs[i] = "logs/" + kwargs[i]
         self.kwargs = kwargs
-        self._job_name = job_name
+        self._job_name = kwargs["J"]
 
     job_name = property(_get_job_name, _set_job_name)
 
