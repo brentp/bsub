@@ -261,7 +261,7 @@ class bsub(object):
         """
         kargs = cls._kwargs_to_flag_string(kwargs)
         if all(isinstance(a, six.integer_types) for a in args):
-            command = "bkill " + kargs + " " + " ".join(args)
+            command = "bkill " + kargs + " " + " ".join(str(a) for a in args)
             _run(command, "is being terminated")
         else:
             for a in args:
