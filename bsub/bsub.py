@@ -58,6 +58,8 @@ import sys
 import os
 import time
 import six
+import signal
+from contextlib import contextmanager
 
 TEST_ONLY = 666
 
@@ -108,19 +110,20 @@ class bsub(object):
                ]
 
     @classmethod
-    def poll(self, job_ids, names=False):
-        if isinstance(job_ids, six.string_types):
-            job_ids = [job_ids]
+    def poll(self, job_ids, names=False, timeout=0):
+        with _timeout(timeout):
+            if isinstance(job_ids, six.string_types):
+                job_ids = [job_ids]
 
-        if len(job_ids) == []:
-            return
-        job_ids = frozenset(job_ids)
-        sleep_time = 1
-        while job_ids.intersection(self.running_jobs(names=names)):
-            time.sleep(sleep_time)
-            if sleep_time < 100:
-                sleep_time += 0.25
-        return True
+            if len(job_ids) == []:
+                return
+            job_ids = frozenset(job_ids)
+            sleep_time = 1
+            while job_ids.intersection(self.running_jobs(names=names)):
+                time.sleep(sleep_time)
+                if sleep_time < 100:
+                    sleep_time += 0.25
+            return True
 
     @classmethod
     def _cap(self, max_jobs):
@@ -358,6 +361,22 @@ def _run(command, check_str="is submitted"):
         raise BSubException(res)
     # could return job-id from here
     return res
+
+@contextmanager
+def _timeout(time):
+    signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.alarm(time)
+
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+
+def _raise_timeout(signum, frame):
+    if (sys.version_info >= (3, 0)):
+        raise TimeoutError
+    else:
+        raise Exception('TimeoutExpired')
 
 if __name__ == "__main__":
     import doctest
