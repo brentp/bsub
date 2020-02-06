@@ -255,7 +255,7 @@ class bsub(object):
         Kill this job. To kill any job, see the bsub.bkill classmethod
         """
         if self.job_id is None: return
-        return bsub.kill(int(self.job_id))
+        return bsub.bkill(int(self.job_id))
 
     @classmethod
     def bkill(cls, *args, **kwargs):
