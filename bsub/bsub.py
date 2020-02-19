@@ -99,6 +99,19 @@ class bsub(object):
     def _get_job_name(self):
         return self._job_name
 
+    # TODO: rework this method to be used by pending_jobs and completed jobs
+    #  @staticmethod
+    #  def get_jobs(self, names=False, status=None):
+    #      """
+    #          
+    #      """
+    #      bjob_statuses = status if type(status) is list else [status]
+    #      return [x.split(None, 7)[-2 if names else 0]
+    #              for x in sp.check_output(["bjobs", "-w", "-a"])\
+    #                         .decode().rstrip().split("\n")[1:]
+    #                         if x.strip() and not status or x.split(None, 7)[2] in bjob_statuses
+    #             ]
+
     @classmethod
     def running_jobs(self, names=False):
         # grab the integer id or the name depending on whether they requested
@@ -107,6 +120,25 @@ class bsub(object):
                 for x in sp.check_output(["bjobs", "-w"])\
                            .decode().rstrip().split("\n")[1:]
                            if x.strip()
+               ]
+
+    @classmethod
+    def pending_jobs(self, names=False):
+        return [x.split(None, 7)[-2 if names else 0]
+                for x in sp.check_output(["bjobs", "-w", "-a"])\
+                           .decode().rstrip().split("\n")[1:]
+                           if x.strip() and x.split(None, 7)[2] in ["PEND"]
+               ]
+
+    @classmethod
+    def completed_jobs(self, names=False):
+        """
+            Return all completed jobs.
+        """
+        return [x.split(None, 7)[-2 if names else 0]
+                for x in sp.check_output(["bjobs", "-w", "-a"])\
+                           .decode().rstrip().split("\n")[1:]
+                           if x.strip() and x.split(None, 7)[2] in ["DONE", "EXIT"]
                ]
 
     @classmethod
@@ -119,11 +151,13 @@ class bsub(object):
                 return
             job_ids = frozenset(job_ids)
             sleep_time = 1
-            while job_ids.intersection(self.running_jobs(names=names)):
+            while jobs_ids:
+                for job in job_ids.intersection(set(self.completed_jobs(names=names))):
+                   job_ids.remove(job) 
                 time.sleep(sleep_time)
                 if sleep_time < 100:
                     sleep_time += 0.25
-            return True
+        return True
 
     @classmethod
     def _cap(self, max_jobs):
@@ -256,6 +290,32 @@ class bsub(object):
         """
         if self.job_id is None: return
         return bsub.bkill(int(self.job_id))
+
+    def in_history(self):
+        """
+        Check if job_id of this bsub object instance is in the bjob history. Submitted
+        bsub jobs do not show up immediately in output of `bjobs`. '-a' defaults to a
+        history window of 1hr.
+        """
+        job_list = [x.split(None, 7)[0]
+                    for x in sp.check_output(["bjobs", "-w", "-a"])\
+                               .decode().rstrip().split("\n")[1:]
+                               if x.strip()
+                   ]
+        return True if self.job_id in job_list else False
+
+    def wait(self, timeout=0):
+        """
+        Wait for job to finish (status is either 'DONE' or 'EXIT'). If job does not
+        finish in 'timeout' seconds, throw TimeOutExpired exception.
+        """
+        with _timeout(timeout):
+            sleep_time = 1
+            while self.job_id not in self.completed_jobs():
+                time.sleep(sleep_time)
+                if sleep_time < 100:
+                    sleep_time += 0.25
+        return True
 
     @classmethod
     def bkill(cls, *args, **kwargs):
