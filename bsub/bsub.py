@@ -149,7 +149,7 @@ class bsub(object):
 
             if len(job_ids) == []:
                 return
-            job_ids = frozenset(job_ids)
+            job_ids = set(job_ids)
             sleep_time = 1
             while job_ids:
                 for job in job_ids.intersection(set(self.completed_jobs(names=names))):
